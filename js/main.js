@@ -1,68 +1,84 @@
-
 var Venue = Backbone.Model.extend();
 
 var Venues = Backbone.Collection.extend({
-	model: Venue
+  model: Venue,
 });
 
 var VenueView = Backbone.View.extend({
-	tagName: "li",
+  tagName: "li",
 
-	events: {
-		"click": "onClick",
-	},
+  initialize: function (options) {
+    this.bus = options.bus;
+  },
 
-	onClick: function(){
-	},
+  events: {
+    click: "onClick",
+  },
 
-	render: function(){
-		this.$el.html(this.model.get("name"));
+  onClick: function () {
+    this.bus.trigger("venueSelected", this.model); // this will publish an event to the bus and pass teh data about the venue that was clicked
+  },
 
-		return this;
-	}
+  render: function () {
+    this.$el.html(this.model.get("name"));
+
+    return this;
+  },
 });
 
 var VenuesView = Backbone.View.extend({
-	tagName: "ul",
+  tagName: "ul",
 
-	id: "venues",
+  id: "venues",
 
-	render: function(){
-		var self = this;
+  initialize: function (options) {
+    this.bus = options.bus;
+  },
 
-		this.model.each(function(venue){
-			var view = new VenueView({ model: venue });
-			self.$el.append(view.render().$el);
-		});
+  render: function () {
+    var self = this;
 
-		return this;
-	}
+    this.model.each(function (venue) {
+      var view = new VenueView({ model: venue, bus: self.bus });
+      self.$el.append(view.render().$el);
+    });
+
+    return this;
+  },
 });
 
 var MapView = Backbone.View.extend({
-	el: "#map-container",
+  el: "#map-container",
 
-	render: function(){
-		if (this.model)
-			this.$("#venue-name").html(this.model.get("name"));
+  initialize: function (options) {
+    this.bus = options.bus;
 
-		return this;
-	}
-})
+    this.bus.on("venueSelected", this.onVenueSelected, this); // subcribing to event, firing method
+  },
+
+  onVenueSelected: function (venue) {
+    //custom method passes venue model data to map
+    this.model = venue;
+    this.render();
+  },
+
+  render: function () {
+    if (this.model) this.$("#venue-name").html(this.model.get("name")); // renders venue name only if model data is present
+
+    return this;
+  },
+});
+
+var bus = _.extend({}, Backbone.Events);
 
 var venues = new Venues([
-	new Venue({ name: "30 Mill Espresso" }),
-	new Venue({ name: "Platform Espresso" }),
-	new Venue({ name: "Mr Foxx" })
-	]);
+  new Venue({ name: "30 Mill Espresso" }),
+  new Venue({ name: "Platform Espresso" }),
+  new Venue({ name: "Mr Foxx" }),
+]);
 
-var venuesView = new VenuesView({ model: venues});
+var venuesView = new VenuesView({ model: venues, bus: bus });
 $("#venues-container").html(venuesView.render().$el);
 
-var mapView = new MapView();
+var mapView = new MapView({ bus: bus });
 mapView.render();
-
-
-
-
-
